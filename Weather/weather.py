@@ -1,53 +1,80 @@
 
 import requests;
 import json;
-import pprint;
+#import pprint;
 
 accuweatherAPIKey = 'pdH1tnZNWdwFTFdrxCEd6O37UKdH0JvC';
 
 
-r = requests.get('http://www.geoplugin.net/json.gp');
+def getCoordinates () :
+    r = requests.get('http://www.geoplugin.net/json.gp');
 
-if (r.status_code != 200) :
-    print('Unable to detect localization.');
-else :    
-    location = json.loads(r.text);
-    lat = location['geoplugin_latitude'];
-    long = location['geoplugin_longitude'];
-    ##print (pprint.pprint(localizacao));
-    ##print ('lat=' + str(lat)+ ' long=' + str(long));
+    if (r.status_code != 200) :
+        print('Unable to detect localization.');
+        
+    else :    
+        location = json.loads(r.text);
+        coordinates = {};
+        coordinates['lat'] = location['geoplugin_latitude'];
+        coordinates['long'] = location['geoplugin_longitude'];
+        return coordinates;
 
-    localizationAPIUrl = 'http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=' + accuweatherAPIKey + '&q=' + str(lat) + '%2C' + str(long) + '&language=pt-pt';
-    r2 = requests.get(localizationAPIUrl);
-    accuweatherLocation = json.loads(r2.text);
 
-    if (r2.status_code != 200) :
+
+def getLocalCode(latitude, longitude) :
+    localizationAPIUrl = 'http://dataservice.accuweather.com/locations/v1/cities/geoposition/search?apikey=' + accuweatherAPIKey \
+                         + '&q=' + str(latitude) + '%2C' + str(longitude) + '&language=pt-pt';
+    r = requests.get(localizationAPIUrl);
+    if (r.status_code != 200) :
         print('Unable to detect location code ');
     else :
-        localName = accuweatherLocation['LocalizedName'] + ', ' \
+        accuweatherLocation = json.loads(r.text);
+        infoLocal = {};    
+        infoLocal['localName'] = accuweatherLocation['LocalizedName'] + ', ' \
                     + accuweatherLocation['AdministrativeArea']['LocalizedName'] + '. ' \
                     + accuweatherLocation['Country']['LocalizedName'] ;
 
-        localCode = accuweatherLocation['Key'];
-        #print(pprint.pprint(accuweatherLocation));
-        #print('localCode: ' + localCode);
+        infoLocal['localCode'] = accuweatherLocation['Key'];
 
-        print('Get weather from ' + localName);
+        return infoLocal;
 
 
 
-        currentConditionsAPIUrl = 'http://dataservice.accuweather.com/currentconditions/v1/' + localCode + '?apikey=' + accuweatherAPIKey + '&language=pt-pt';
-        r3 = requests.get(currentConditionsAPIUrl);
-        if (r3.status_code != 200) :
-            print('Unable to detect current conditions ');
-        else :
-            accuweatherCurrentConditions = json.loads(r3.text);
-            #print(pprint.pprint(accuweatherCurrentConditions));
-            conditionsTemperature = accuweatherCurrentConditions[0]['Temperature']['Metric']['Value'];
-            conditionsText = accuweatherCurrentConditions[0]['WeatherText'];
-            
-            print('Current conditions : ' + conditionsText);
-            print('Temperature : ' + str(conditionsTemperature) + ' degrees');
+def getCurrentCondition(localCode, localName) :
+    currentConditionsAPIUrl = 'http://dataservice.accuweather.com/currentconditions/v1/' + localCode \
+                              + '?apikey=' + accuweatherAPIKey + '&language=pt-pt';
+    r = requests.get(currentConditionsAPIUrl);
+    if (r.status_code != 200) :
+        print('Unable to detect current conditions ');
+    else :
+        accuweatherCurrentConditions = json.loads(r.text);
+        infoWeather = {};
+        #print(pprint.pprint(accuweatherCurrentConditions));
+        infoWeather['temperature'] = accuweatherCurrentConditions[0]['Temperature']['Metric']['Value'];
+        infoWeather['conditionsText'] = accuweatherCurrentConditions[0]['WeatherText'];
+        infoWeather['localName'] = localName;
+
+        return infoWeather;
+        
+
+
+# Program start
+
+coordinates = getCoordinates();
+infoLocal = getLocalCode(coordinates['lat'], coordinates['long']);
+infoWeather = getCurrentCondition(infoLocal['localCode'], infoLocal['localName']);
+
+
+print('Get weather from ' + infoWeather['localName']);
+print('Current conditions : ' + infoWeather['conditionsText']);
+print('Temperature : ' + str(infoWeather['temperature']) + '\xb0' + 'C');
         
         
     
+
+
+
+
+
+
+
